@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Player - Kahoot Multiplayer</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { font-family: Arial; background: #111; color: white; text-align: center; }
+    .box { margin: auto; width: 500px; background: #222; padding: 20px; border-radius: 10px; }
+    input { padding: 10px; width: 80%; margin: 10px; border-radius: 8px; border: none; }
+    button { padding: 12px; margin: 8px; width: 80%; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; font-weight: bold; }
+    .a { background: #ff4444; color: white; }
+    .b { background: #448aff; color: white; }
+    .c { background: #00c853; color: white; }
+    .d { background: #ffbb33; color: black; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="box">
+
+  <div id="joinScreen">
+    <h1>Entrar no Quiz</h1>
+    <input id="pinInput" placeholder="Digite o PIN">
+    <input id="nameInput" placeholder="Seu nome">
+    <button onclick="joinRoom()">Entrar</button>
+  </div>
+
+  <div id="quizScreen" class="hidden">
+    <h2 id="questionText">Esperando pergunta...</h2>
+    <h3 id="timerText"></h3>
+
+    <button class="a" onclick="sendAnswer('a')" id="btnA"></button>
+    <button class="b" onclick="sendAnswer('b')" id="btnB"></button>
+    <button class="c" onclick="sendAnswer('c')" id="btnC"></button>
+    <button class="d" onclick="sendAnswer('d')" id="btnD"></button>
+
+    <h2 id="resultText"></h2>
+  </div>
+
+</div>
+
+<script>
+  const socket = io();
+  let pinGlobal = null;
+  let timeLeft = 10;
+  let timerInterval;
+  let answered = false;
+
+  function joinRoom() {
+    const pin = document.getElementById("pinInput").value.trim();
+    const name = document.getElementById("nameInput").value.trim();
+
+    if (!pin || !name) {
+      alert("Digite PIN e Nome!");
+      return;
+    }
+
+    pinGlobal = pin;
+    socket.emit("joinRoom", { pin, name });
+  }
+
+  socket.on("joinedRoom", () => {
+    document.getElementById("joinScreen").classList.add("hidden");
+    document.getElementById("quizScreen").classList.remove("hidden");
+  });
+
+  socket.on("newQuestion", (data) => {
+    answered = false;
+    clearInterval(timerInterval);
+
+    timeLeft = 10;
+    document.getElementById("resultText").innerText = "";
+    document.getElementById("questionText").innerText = data.question.question;
+
+    document.getElementById("btnA").innerText = "A) " + data.question.answers.a;
+    document.getElementById("btnB").innerText = "B) " + data.question.answers.b;
+    document.getElementById("btnC").innerText = "C) " + data.question.answers.c;
+    document.getElementById("btnD").innerText = "D) " + data.question.answers.d;
+
+    document.getElementById("timerText").innerText = "Tempo: " + timeLeft;
+
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      document.getElementById("timerText").innerText = "Tempo: " + timeLeft;
+
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        document.getElementById("resultText").innerText = "⏳ Tempo esgotado!";
+        answered = true;
+      }
+    }, 1000);
+  });
+
+  function sendAnswer(choice) {
+    if (answered) return;
+    answered = true;
+
+    socket.emit("submitAnswer", {
+      pin: pinGlobal,
+      answer: choice,
+      timeLeft: timeLeft
+    });
+
+    document.getElementById("resultText").innerText = "Resposta enviada!";
+  }
+
+  socket.on("errorMessage", (msg) => {
+    alert(msg);
+  });
+</script>
+
+</body>
+</html>

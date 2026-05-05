@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Host - Kahoot Multiplayer</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { font-family: Arial; background: #111; color: white; text-align: center; }
+    .box { margin: auto; width: 600px; background: #222; padding: 20px; border-radius: 10px; }
+    button { padding: 12px; margin: 10px; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; }
+    .green { background: #00ff99; font-weight: bold; }
+    .blue { background: #448aff; color: white; font-weight: bold; }
+    .list { text-align: left; margin-top: 20px; background: #333; padding: 15px; border-radius: 10px; }
+  </style>
+</head>
+<body>
+
+  <div class="box">
+    <h1>Host (Professor)</h1>
+    <h2>PIN da Sala:</h2>
+    <h1 id="pinText">---</h1>
+
+    <button class="green" onclick="startQuiz()">Começar Quiz</button>
+    <button class="blue" onclick="nextQuestion()">Próxima Pergunta</button>
+
+    <h2 id="questionTitle"></h2>
+
+    <div class="list">
+      <h3>Jogadores conectados:</h3>
+      <div id="playersList"></div>
+    </div>
+
+    <div class="list">
+      <h3>🏆 Leaderboard</h3>
+      <div id="leaderboard"></div>
+    </div>
+  </div>
+
+<script>
+  const socket = io();
+  let pinGlobal = null;
+
+  socket.emit("createRoom");
+
+  socket.on("roomCreated", (pin) => {
+    pinGlobal = pin;
+    document.getElementById("pinText").innerText = pin;
+  });
+
+  socket.on("updatePlayers", (players) => {
+    document.getElementById("playersList").innerHTML =
+      players.map(p => `<p>${p.name}</p>`).join("");
+  });
+
+  socket.on("newQuestion", (data) => {
+    document.getElementById("questionTitle").innerText =
+      `Pergunta ${data.index + 1}/${data.total}: ${data.question.question}`;
+  });
+
+  socket.on("leaderboardUpdate", (players) => {
+    players.sort((a,b) => b.score - a.score);
+
+    document.getElementById("leaderboard").innerHTML =
+      players.map((p, i) => `<p>${i+1}. ${p.name} - ${p.score} pts</p>`).join("");
+  });
+
+  socket.on("quizEnded", (players) => {
+    alert("Quiz terminou!");
+  });
+
+  function startQuiz() {
+    if (!pinGlobal) return;
+    socket.emit("startQuiz", pinGlobal);
+  }
+
+  function nextQuestion() {
+    if (!pinGlobal) return;
+    socket.emit("nextQuestion", pinGlobal);
+  }
+</script>
+
+</body>
+</html>
