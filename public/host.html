@@ -11,6 +11,9 @@
     .green { background: #00ff99; font-weight: bold; }
     .blue { background: #448aff; color: white; font-weight: bold; }
     .list { text-align: left; margin-top: 20px; background: #333; padding: 15px; border-radius: 10px; }
+    .player-item { padding: 8px 12px; margin: 4px 0; background: #444; border-radius: 6px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    .player-item .dot { width: 8px; height: 8px; background: #00ff99; border-radius: 50%; flex-shrink: 0; }
+    .player-count { color: #aaa; font-size: 14px; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -24,8 +27,9 @@
     <h2 id="questionTitle"></h2>
 
     <div class="list">
-      <h3>Jogadores conectados:</h3>
+      <h3>👥 Jogadores conectados:</h3>
       <div id="playersList"></div>
+      <p id="playerCount" class="player-count"></p>
     </div>
 
     <div class="list">
@@ -39,7 +43,15 @@
 
   socket.on("updatePlayers", (players) => {
     document.getElementById("playersList").innerHTML =
-      players.map(p => `<p>${p.name}</p>`).join("");
+      players.map(p =>
+        `<div class="player-item">
+          <span class="dot"></span>
+          <span>${p.name}</span>
+        </div>`
+      ).join("");
+
+    document.getElementById("playerCount").innerText =
+      players.length + " jogador(es) na sala";
   });
 
   socket.on("newQuestion", (data) => {
