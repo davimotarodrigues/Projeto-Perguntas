@@ -7,13 +7,15 @@
   <style>
     body { font-family: Arial; background: #111; color: white; text-align: center; }
     .box { margin: auto; width: 500px; background: #222; padding: 20px; border-radius: 10px; }
-    input { padding: 10px; width: 80%; margin: 10px; border-radius: 8px; border: none; }
+    input { padding: 10px; width: 80%; margin: 10px; border-radius: 8px; border: none; font-size: 16px; }
     button { padding: 12px; margin: 8px; width: 80%; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; font-weight: bold; }
     .a { background: #ff4444; color: white; }
     .b { background: #448aff; color: white; }
     .c { background: #00c853; color: white; }
     .d { background: #ffbb33; color: black; }
+    .join-btn { background: #00ff99; color: #111; font-size: 18px; padding: 14px; }
     .hidden { display: none; }
+    .error-msg { color: #ff4444; font-size: 14px; margin-top: 5px; }
     /* Botões desativados (timeout ou já respondeu) */
     .answer-btn { transition: opacity 0.3s, transform 0.1s; }
     .answer-btn:active { transform: scale(0.97); }
@@ -69,6 +71,7 @@
     .pin-mini { background: #1a1a2e; border: 1px solid #00ff99; border-radius: 8px; padding: 10px 15px; margin: 10px 0; display: inline-block; }
     .pin-mini-label { color: #aaa; font-size: 12px; }
     .pin-mini-code { color: #00ff99; font-size: 24px; font-weight: bold; letter-spacing: 6px; font-family: 'Courier New', monospace; margin-left: 8px; }
+    .pin-input { font-size: 28px; letter-spacing: 8px; text-align: center; font-weight: bold; font-family: 'Courier New', monospace; }
   </style>
 </head>
 <body>
@@ -77,8 +80,10 @@
 
   <div id="joinScreen">
     <h1>🎯 Entrar no Quiz</h1>
+    <input id="pinInput" class="pin-input" placeholder="PIN da sala" maxlength="6" inputmode="numeric">
     <input id="nameInput" placeholder="Seu nome">
-    <button onclick="joinGame()">Entrar</button>
+    <p id="joinError" class="error-msg"></p>
+    <button class="join-btn" onclick="joinGame()">Entrar</button>
   </div>
 
   <div id="waitingScreen" class="hidden">
@@ -125,16 +130,37 @@
   let myName = "";
 
   function joinGame() {
+    const pin = document.getElementById("pinInput").value.trim();
     const name = document.getElementById("nameInput").value.trim();
+    const errorEl = document.getElementById("joinError");
+
+    errorEl.innerText = "";
+
+    if (!pin || pin.length !== 6) {
+      errorEl.innerText = "Digite o PIN de 6 dígitos!";
+      return;
+    }
 
     if (!name) {
-      alert("Digite seu nome!");
+      errorEl.innerText = "Digite seu nome!";
       return;
     }
 
     myName = name;
-    socket.emit("joinGame", { name });
+    socket.emit("joinGame", { name, pin });
   }
+
+  // Enter para enviar
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !document.getElementById("joinScreen").classList.contains("hidden")) {
+      joinGame();
+    }
+  });
+
+  // Erro de PIN inválido
+  socket.on("joinError", (msg) => {
+    document.getElementById("joinError").innerText = msg;
+  });
 
   socket.on("joinedGame", ({ pin }) => {
     document.getElementById("joinScreen").classList.add("hidden");
@@ -144,7 +170,6 @@
   });
 
   socket.on("updatePlayers", (players) => {
-    // Atualiza a lista na tela de espera
     const waitingList = document.getElementById("waitingPlayersList");
     const playerCount = document.getElementById("playerCount");
 
@@ -160,6 +185,18 @@
     if (playerCount) {
       playerCount.innerText = players.length + " jogador(es) na sala";
     }
+  });
+
+  // Reset do jogo (host iniciou novo quiz)
+  socket.on("resetGame", () => {
+    clearInterval(timerInterval);
+    document.getElementById("quizScreen").classList.add("hidden");
+    document.getElementById("waitingScreen").classList.add("hidden");
+    document.getElementById("endScreen").classList.add("hidden");
+    document.getElementById("joinScreen").classList.remove("hidden");
+    document.getElementById("pinInput").value = "";
+    document.getElementById("nameInput").value = "";
+    document.getElementById("joinError").innerText = "O host iniciou um novo jogo. Digite o novo PIN!";
   });
 
   function resetButtons() {
@@ -188,11 +225,10 @@
     answered = false;
     clearInterval(timerInterval);
 
-    // Transição: tela de espera → tela do quiz
     document.getElementById("waitingScreen").classList.add("hidden");
+    document.getElementById("endScreen").classList.add("hidden");
     document.getElementById("quizScreen").classList.remove("hidden");
 
-    // Reset estado visual
     resetButtons();
     document.getElementById("feedbackBox").classList.add("hidden");
 
@@ -231,18 +267,14 @@
       timeLeft: timeLeft
     });
 
-    // Desabilita botões imediatamente após responder
     disableAllButtons();
   }
 
-  // Recebe resultado individual: acertou ou errou
   socket.on("answerResult", ({ correct, correctAnswer }) => {
     if (correct) {
       showFeedback("correct", "✅ Você acertou! +" + (200 + timeLeft * 80) + " pts");
     } else {
       showFeedback("wrong", "❌ Você errou! Resposta correta: " + correctAnswer.toUpperCase());
-
-      // Destaca a resposta correta em verde
       document.getElementById("btn" + correctAnswer.toUpperCase()).classList.add("correct-answer");
     }
   });

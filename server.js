@@ -111,11 +111,22 @@ let started = false;
 
 io.on("connection", (socket) => {
 
-  // envia PIN atual para quem se conectar (host)
-  socket.emit("roomPin", roomPin);
+  // Host se conecta → entra na sala para receber updates e recebe o PIN
+  socket.on("hostJoin", () => {
+    socket.join(GLOBAL_ROOM);
+    socket.emit("roomPin", roomPin);
+    socket.emit("updatePlayers", Object.values(players));
+    console.log("Host conectado. PIN: " + roomPin);
+  });
 
-  // player entra com nome
-  socket.on("joinGame", ({ name }) => {
+  // Player entra com nome + PIN
+  socket.on("joinGame", ({ name, pin }) => {
+    // Valida PIN
+    if (pin !== roomPin) {
+      socket.emit("joinError", "PIN inválido! Tente novamente.");
+      return;
+    }
+
     players[socket.id] = {
       name,
       score: 0,
@@ -127,6 +138,8 @@ io.on("connection", (socket) => {
     io.to(GLOBAL_ROOM).emit("updatePlayers", Object.values(players));
 
     socket.emit("joinedGame", { pin: roomPin });
+
+    console.log(name + " entrou na sala. Total: " + Object.keys(players).length);
 
     // se o jogo já começou, manda pergunta atual
     if (started && currentQuestion >= 0) {
@@ -140,6 +153,11 @@ io.on("connection", (socket) => {
 
   // host começa quiz
   socket.on("startQuiz", () => {
+    if (Object.keys(players).length === 0) {
+      socket.emit("joinError", "Nenhum jogador conectado!");
+      return;
+    }
+
     started = true;
     currentQuestion = 0;
 
@@ -200,9 +218,25 @@ io.on("connection", (socket) => {
     io.to(GLOBAL_ROOM).emit("leaderboardUpdate", Object.values(players));
   });
 
+  // host inicia novo quiz (gera novo PIN, reseta tudo)
+  socket.on("newQuiz", () => {
+    roomPin = generatePin();
+    players = {};
+    currentQuestion = -1;
+    started = false;
+
+    io.to(GLOBAL_ROOM).emit("resetGame");
+    socket.emit("roomPin", roomPin);
+    socket.emit("updatePlayers", []);
+
+    console.log("Novo quiz. Novo PIN: " + roomPin);
+  });
+
   socket.on("disconnect", () => {
-    delete players[socket.id];
-    io.to(GLOBAL_ROOM).emit("updatePlayers", Object.values(players));
+    if (players[socket.id]) {
+      delete players[socket.id];
+      io.to(GLOBAL_ROOM).emit("updatePlayers", Object.values(players));
+    }
   });
 });
 

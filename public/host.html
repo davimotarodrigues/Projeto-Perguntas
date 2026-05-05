@@ -33,6 +33,7 @@
     .green { background: #00ff99; font-weight: bold; font-size: 18px; padding: 16px 40px; }
     .blue { background: #448aff; color: white; font-weight: bold; font-size: 20px; padding: 18px 50px; }
     .restart { background: #ffbb33; color: #111; font-weight: bold; }
+    .orange { background: #ff7043; color: white; font-weight: bold; }
 
     /* Pergunta */
     .question-area {
@@ -121,12 +122,17 @@
         <div id="finalLeaderboard"></div>
       </div>
 
-      <button class="restart" onclick="restartQuiz()">🔄 Novo Quiz</button>
+      <button class="restart" onclick="newQuiz()">🔄 Novo Quiz (Novo PIN)</button>
     </div>
   </div>
 
 <script>
   const socket = io();
+
+  // Host se registra ao conectar
+  socket.on("connect", () => {
+    socket.emit("hostJoin");
+  });
 
   // --- Recebe PIN da sala ---
   socket.on("roomPin", (pin) => {
@@ -135,25 +141,32 @@
 
   // --- Atualiza lista de jogadores ---
   socket.on("updatePlayers", (players) => {
-    document.getElementById("playersList").innerHTML =
-      players.map(p =>
+    const listEl = document.getElementById("playersList");
+    const countEl = document.getElementById("playerCount");
+
+    if (players.length === 0) {
+      listEl.innerHTML = '<p style="color:#777;">Nenhum jogador ainda...</p>';
+    } else {
+      listEl.innerHTML = players.map(p =>
         `<div class="player-item">
           <span class="dot"></span>
           <span>${p.name}</span>
         </div>`
       ).join("");
+    }
 
-    document.getElementById("playerCount").innerText =
-      players.length + " jogador(es) na sala";
+    countEl.innerText = players.length + " jogador(es) na sala";
+  });
+
+  // --- Erro ---
+  socket.on("joinError", (msg) => {
+    alert(msg);
   });
 
   // --- Quiz iniciado ---
   socket.on("quizStarted", () => {
-    // Esconde PIN e botão Começar
     document.getElementById("pinBox").classList.add("hidden");
     document.getElementById("waitingArea").classList.add("hidden");
-
-    // Mostra área do quiz
     document.getElementById("quizArea").classList.remove("hidden");
     document.getElementById("endedArea").classList.add("hidden");
   });
@@ -180,10 +193,7 @@
   socket.on("quizEnded", (players) => {
     players.sort((a,b) => b.score - a.score);
 
-    // Esconde área do quiz
     document.getElementById("quizArea").classList.add("hidden");
-
-    // Mostra PIN novamente e área de fim
     document.getElementById("pinBox").classList.remove("hidden");
     document.getElementById("endedArea").classList.remove("hidden");
 
@@ -195,6 +205,14 @@
       }).join("");
   });
 
+  // --- Reset do jogo ---
+  socket.on("resetGame", () => {
+    document.getElementById("pinBox").classList.remove("hidden");
+    document.getElementById("waitingArea").classList.remove("hidden");
+    document.getElementById("quizArea").classList.add("hidden");
+    document.getElementById("endedArea").classList.add("hidden");
+  });
+
   // --- Funções ---
   function startQuiz() {
     socket.emit("startQuiz");
@@ -204,8 +222,10 @@
     socket.emit("nextQuestion");
   }
 
-  function restartQuiz() {
-    location.reload();
+  function newQuiz() {
+    if (confirm("Isso vai gerar um novo PIN e expulsar todos os jogadores. Continuar?")) {
+      socket.emit("newQuiz");
+    }
   }
 </script>
 
