@@ -14,18 +14,18 @@ app.use(express.static("public"));
 const questions = [
   {
     question: "O que caracteriza o modelo de franquia?",
-    answers: { a: "Venda de produtos sem marca definida", b: "Uso de uma marca e modelo de negócio já estabelecido", c: "Criação de empresas independentes sem padrão", d: "Venda apenas por meio digital" },
-    correct: "b"
+    answers: { a: "Uso de uma marca e modelo de negócio já estabelecido", b: "Venda de produtos sem marca definida", c: "Criação de empresas independentes sem padrão", d: "Venda apenas por meio digital" },
+    correct: "a"
   },
   {
     question: "Qual é uma obrigação do franqueado dentro do sistema de franquias?",
-    answers: { a: "Criar sua própria marca", b: "Seguir os padrões definidos pela franqueadora", c: "Não pagar taxas", d: "Trabalhar sem contrato" },
-    correct: "b"
+    answers: { a: "Criar sua própria marca", b: "Não pagar taxas", c: "Seguir os padrões definidos pela franqueadora", d: "Trabalhar sem contrato" },
+    correct: "c"
   },
   {
     question: "Uma das principais vantagens das franquias é:",
-    answers: { a: "Total liberdade de gestão", b: "Ausência de custos", c: "Uso de uma marca já reconhecida", d: "Falta de concorrência" },
-    correct: "c"
+    answers: { a: "Total liberdade de gestão", b: "Uso de uma marca já reconhecida", c: "Ausência de custos", d: "Falta de concorrência" },
+    correct: "b"
   },
   {
     question: "Qual é uma desvantagem do modelo de franquia?",
@@ -34,23 +34,23 @@ const questions = [
   },
   {
     question: "O que define o modelo multiplataforma?",
-    answers: { a: "Atuação em apenas um canal de vendas", b: "Uso exclusivo de lojas físicas", c: "Presença em diferentes canais e plataformas integradas", d: "Venda apenas por redes sociais" },
-    correct: "c"
+    answers: { a: "Atuação em apenas um canal de vendas", b: "Uso exclusivo de lojas físicas", c: "Venda apenas por redes sociais", d: "Presença em diferentes canais e plataformas integradas" },
+    correct: "d"
   },
   {
     question: "Qual é uma vantagem do modelo multiplataforma?",
-    answers: { a: "Menor alcance de público", b: "Redução da presença digital", c: "Maior alcance e flexibilidade para o cliente", d: "Eliminação de custos" },
-    correct: "c"
+    answers: { a: "Maior alcance e flexibilidade para o cliente", b: "Redução da presença digital", c: "Menor alcance de público", d: "Eliminação de custos" },
+    correct: "a"
   },
   {
     question: "Qual empresa é um exemplo de franquia citado no trabalho?",
-    answers: { a: "Amazon", b: "Netflix", c: "McDonald's", d: "Google" },
-    correct: "c"
+    answers: { a: "Amazon", b: "McDonald's", c: "Netflix", d: "Google" },
+    correct: "b"
   },
   {
     question: "Qual empresa utiliza fortemente o modelo multiplataforma, permitindo acesso em diversos dispositivos?",
-    answers: { a: "McDonald's", b: "Netflix", c: "Subway", d: "Burger King" },
-    correct: "b"
+    answers: { a: "McDonald's", b: "Burger King", c: "Subway", d: "Netflix" },
+    correct: "d"
   }
 ];
 
