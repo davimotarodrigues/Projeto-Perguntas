@@ -99,11 +99,20 @@ const questions = [
 
 const GLOBAL_ROOM = "GLOBAL";
 
+// Gera PIN de 6 dígitos
+function generatePin() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+let roomPin = generatePin();
 let players = {};
 let currentQuestion = -1;
 let started = false;
 
 io.on("connection", (socket) => {
+
+  // envia PIN atual para quem se conectar (host)
+  socket.emit("roomPin", roomPin);
 
   // player entra com nome
   socket.on("joinGame", ({ name }) => {
@@ -117,7 +126,7 @@ io.on("connection", (socket) => {
 
     io.to(GLOBAL_ROOM).emit("updatePlayers", Object.values(players));
 
-    socket.emit("joinedGame");
+    socket.emit("joinedGame", { pin: roomPin });
 
     // se o jogo já começou, manda pergunta atual
     if (started && currentQuestion >= 0) {
@@ -138,6 +147,7 @@ io.on("connection", (socket) => {
       players[id].answered = false;
     }
 
+    io.to(GLOBAL_ROOM).emit("quizStarted");
     io.to(GLOBAL_ROOM).emit("newQuestion", {
       index: currentQuestion,
       total: questions.length,
