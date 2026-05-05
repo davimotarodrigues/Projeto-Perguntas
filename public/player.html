@@ -14,12 +14,58 @@
     .c { background: #00c853; color: white; }
     .d { background: #ffbb33; color: black; }
     .hidden { display: none; }
+    /* Botões desativados (timeout ou já respondeu) */
+    .answer-btn { transition: opacity 0.3s, transform 0.1s; }
+    .answer-btn:active { transform: scale(0.97); }
+    .answer-btn.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+    /* Destaque da resposta correta/errada */
+    .answer-btn.correct-answer {
+      border: 3px solid #00ff99;
+      box-shadow: 0 0 12px #00ff99;
+      opacity: 1 !important;
+    }
+    .answer-btn.wrong-answer {
+      border: 3px solid #ff4444;
+      box-shadow: 0 0 12px #ff4444;
+      opacity: 1 !important;
+    }
+    /* Feedback */
+    .feedback {
+      font-size: 22px;
+      font-weight: bold;
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 15px;
+    }
+    .feedback.correct {
+      background: rgba(0, 255, 153, 0.15);
+      color: #00ff99;
+      border: 1px solid #00ff99;
+    }
+    .feedback.wrong {
+      background: rgba(255, 68, 68, 0.15);
+      color: #ff4444;
+      border: 1px solid #ff4444;
+    }
+    .feedback.timeout {
+      background: rgba(255, 187, 51, 0.15);
+      color: #ffbb33;
+      border: 1px solid #ffbb33;
+    }
     .waiting-list { text-align: left; margin-top: 15px; background: #333; padding: 15px; border-radius: 10px; max-height: 250px; overflow-y: auto; }
     .waiting-list h3 { margin: 0 0 10px 0; color: #00ff99; }
     .player-item { padding: 8px 12px; margin: 4px 0; background: #444; border-radius: 6px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
     .player-item .dot { width: 8px; height: 8px; background: #00ff99; border-radius: 50%; flex-shrink: 0; }
     .player-count { color: #aaa; font-size: 14px; margin-top: 10px; }
     .waiting-title { color: #ffbb33; font-size: 18px; margin-bottom: 5px; }
+    /* Top 3 ranking final */
+    .rank-gold { background: linear-gradient(135deg, #b8860b, #daa520) !important; color: #111 !important; font-weight: bold; }
+    .rank-silver { background: linear-gradient(135deg, #808080, #c0c0c0) !important; color: #111 !important; font-weight: bold; }
+    .rank-bronze { background: linear-gradient(135deg, #8b4513, #cd7f32) !important; color: #fff !important; font-weight: bold; }
     .pin-mini { background: #1a1a2e; border: 1px solid #00ff99; border-radius: 8px; padding: 10px 15px; margin: 10px 0; display: inline-block; }
     .pin-mini-label { color: #aaa; font-size: 12px; }
     .pin-mini-code { color: #00ff99; font-size: 24px; font-weight: bold; letter-spacing: 6px; font-family: 'Courier New', monospace; margin-left: 8px; }
@@ -53,12 +99,12 @@
     <h2 id="questionText">Esperando pergunta...</h2>
     <h3 id="timerText"></h3>
 
-    <button class="a" onclick="sendAnswer('a')" id="btnA"></button>
-    <button class="b" onclick="sendAnswer('b')" id="btnB"></button>
-    <button class="c" onclick="sendAnswer('c')" id="btnC"></button>
-    <button class="d" onclick="sendAnswer('d')" id="btnD"></button>
+    <button class="a answer-btn" onclick="sendAnswer('a')" id="btnA"></button>
+    <button class="b answer-btn" onclick="sendAnswer('b')" id="btnB"></button>
+    <button class="c answer-btn" onclick="sendAnswer('c')" id="btnC"></button>
+    <button class="d answer-btn" onclick="sendAnswer('d')" id="btnD"></button>
 
-    <h2 id="resultText"></h2>
+    <div id="feedbackBox" class="hidden"></div>
   </div>
 
   <div id="endScreen" class="hidden">
@@ -116,6 +162,28 @@
     }
   });
 
+  function resetButtons() {
+    const btns = ['btnA', 'btnB', 'btnC', 'btnD'];
+    btns.forEach(id => {
+      const btn = document.getElementById(id);
+      btn.classList.remove('disabled', 'correct-answer', 'wrong-answer');
+    });
+  }
+
+  function disableAllButtons() {
+    const btns = ['btnA', 'btnB', 'btnC', 'btnD'];
+    btns.forEach(id => {
+      document.getElementById(id).classList.add('disabled');
+    });
+  }
+
+  function showFeedback(type, text) {
+    const box = document.getElementById("feedbackBox");
+    box.className = "feedback " + type;
+    box.innerText = text;
+    box.classList.remove("hidden");
+  }
+
   socket.on("newQuestion", (data) => {
     answered = false;
     clearInterval(timerInterval);
@@ -124,8 +192,11 @@
     document.getElementById("waitingScreen").classList.add("hidden");
     document.getElementById("quizScreen").classList.remove("hidden");
 
+    // Reset estado visual
+    resetButtons();
+    document.getElementById("feedbackBox").classList.add("hidden");
+
     timeLeft = 10;
-    document.getElementById("resultText").innerText = "";
     document.getElementById("questionText").innerText = data.question.question;
 
     document.getElementById("btnA").innerText = "A) " + data.question.answers.a;
@@ -141,8 +212,12 @@
 
       if (timeLeft <= 0) {
         clearInterval(timerInterval);
-        document.getElementById("resultText").innerText = "⏳ Tempo esgotado!";
-        answered = true;
+        disableAllButtons();
+
+        if (!answered) {
+          answered = true;
+          showFeedback("timeout", "⏳ Tempo esgotado!");
+        }
       }
     }, 1000);
   });
@@ -156,8 +231,21 @@
       timeLeft: timeLeft
     });
 
-    document.getElementById("resultText").innerText = "Resposta enviada!";
+    // Desabilita botões imediatamente após responder
+    disableAllButtons();
   }
+
+  // Recebe resultado individual: acertou ou errou
+  socket.on("answerResult", ({ correct, correctAnswer }) => {
+    if (correct) {
+      showFeedback("correct", "✅ Você acertou! +" + (200 + timeLeft * 80) + " pts");
+    } else {
+      showFeedback("wrong", "❌ Você errou! Resposta correta: " + correctAnswer.toUpperCase());
+
+      // Destaca a resposta correta em verde
+      document.getElementById("btn" + correctAnswer.toUpperCase()).classList.add("correct-answer");
+    }
+  });
 
   socket.on("errorMessage", (msg) => {
     alert(msg);
@@ -175,7 +263,8 @@
       players.map((p, i) => {
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}º`;
         const you = p.name === myName ? ' ⬅ você' : '';
-        return `<div class="player-item">
+        const rankClass = i === 0 ? ' rank-gold' : i === 1 ? ' rank-silver' : i === 2 ? ' rank-bronze' : '';
+        return `<div class="player-item${rankClass}">
           <span>${medal} ${p.name}${you} — ${p.score} pts</span>
         </div>`;
       }).join("");

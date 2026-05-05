@@ -65,6 +65,10 @@
     .player-item .dot { width: 8px; height: 8px; background: #00ff99; border-radius: 50%; flex-shrink: 0; }
     .player-count { color: #aaa; font-size: 14px; margin-top: 10px; }
     .leaderboard-item { padding: 8px 12px; margin: 4px 0; background: #444; border-radius: 6px; font-size: 15px; }
+    /* Top 3 colorido */
+    .leaderboard-item.rank-1 { background: linear-gradient(135deg, #b8860b, #daa520); color: #111; font-weight: bold; }
+    .leaderboard-item.rank-2 { background: linear-gradient(135deg, #808080, #c0c0c0); color: #111; font-weight: bold; }
+    .leaderboard-item.rank-3 { background: linear-gradient(135deg, #8b4513, #cd7f32); color: #fff; font-weight: bold; }
 
     /* Estados */
     .hidden { display: none !important; }
@@ -165,9 +169,11 @@
     players.sort((a,b) => b.score - a.score);
 
     document.getElementById("leaderboard").innerHTML =
-      players.map((p, i) =>
-        `<div class="leaderboard-item">${i+1}º ${p.name} — ${p.score} pts</div>`
-      ).join("");
+      players.map((p, i) => {
+        const rankClass = i === 0 ? ' rank-1' : i === 1 ? ' rank-2' : i === 2 ? ' rank-3' : '';
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}º`;
+        return `<div class="leaderboard-item${rankClass}">${medal} ${p.name} — ${p.score} pts</div>`;
+      }).join("");
   });
 
   // --- Quiz terminou ---
@@ -183,8 +189,9 @@
 
     document.getElementById("finalLeaderboard").innerHTML =
       players.map((p, i) => {
+        const rankClass = i === 0 ? ' rank-1' : i === 1 ? ' rank-2' : i === 2 ? ' rank-3' : '';
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}º`;
-        return `<div class="leaderboard-item">${medal} ${p.name} — ${p.score} pts</div>`;
+        return `<div class="leaderboard-item${rankClass}">${medal} ${p.name} — ${p.score} pts</div>`;
       }).join("");
   });
 

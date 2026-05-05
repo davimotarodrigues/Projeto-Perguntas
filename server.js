@@ -184,11 +184,18 @@ io.on("connection", (socket) => {
     player.answered = true;
 
     const correct = questions[currentQuestion].correct;
+    const isCorrect = (answer === correct);
 
-    if (answer === correct) {
+    if (isCorrect) {
       let points = 200 + (timeLeft * 80);
       player.score += points;
     }
+
+    // Envia resultado individual para o player
+    socket.emit("answerResult", {
+      correct: isCorrect,
+      correctAnswer: correct
+    });
 
     io.to(GLOBAL_ROOM).emit("leaderboardUpdate", Object.values(players));
   });
