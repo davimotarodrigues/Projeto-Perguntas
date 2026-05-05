@@ -5,99 +5,90 @@
   <title>Player - Quiz Multiplayer</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
+    * { box-sizing: border-box; }
     body { font-family: Arial; background: #111; color: white; text-align: center; }
-    .box { margin: auto; width: 500px; background: #222; padding: 20px; border-radius: 10px; }
-    input { padding: 10px; width: 80%; margin: 10px; border-radius: 8px; border: none; }
-    button { padding: 12px; margin: 8px; width: 80%; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; font-weight: bold; }
+    .box { margin: auto; width: 500px; background: #222; padding: 25px; border-radius: 10px; }
+
+    /* Inputs */
+    input { padding: 12px; width: 85%; margin: 8px; border-radius: 8px; border: none; font-size: 16px; text-align: center; }
+    .pin-input { font-size: 30px; letter-spacing: 10px; font-weight: bold; font-family: 'Courier New', monospace; }
+    .name-input { font-size: 16px; }
+
+    /* Botões */
+    button { padding: 12px; margin: 8px; width: 85%; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; font-weight: bold; }
+    .join-btn { background: #00ff99; color: #111; font-size: 18px; padding: 14px; }
     .a { background: #ff4444; color: white; }
     .b { background: #448aff; color: white; }
     .c { background: #00c853; color: white; }
     .d { background: #ffbb33; color: black; }
-    .hidden { display: none; }
-    /* Botões desativados (timeout ou já respondeu) */
+
+    /* Erro */
+    .error-msg { color: #ff4444; font-size: 14px; min-height: 20px; margin: 5px 0; }
+
+    /* Botões de resposta */
     .answer-btn { transition: opacity 0.3s, transform 0.1s; }
     .answer-btn:active { transform: scale(0.97); }
-    .answer-btn.disabled {
-      opacity: 0.4;
-      pointer-events: none;
-      cursor: not-allowed;
-    }
-    /* Destaque da resposta correta/errada */
-    .answer-btn.correct-answer {
-      border: 3px solid #00ff99;
-      box-shadow: 0 0 12px #00ff99;
-      opacity: 1 !important;
-    }
-    .answer-btn.wrong-answer {
-      border: 3px solid #ff4444;
-      box-shadow: 0 0 12px #ff4444;
-      opacity: 1 !important;
-    }
+    .answer-btn.disabled { opacity: 0.35; pointer-events: none; }
+    .answer-btn.correct-highlight { border: 3px solid #00ff99; box-shadow: 0 0 12px #00ff99; opacity: 1 !important; }
+    .answer-btn.wrong-highlight { border: 3px solid #ff4444; box-shadow: 0 0 12px #ff4444; opacity: 1 !important; }
+
     /* Feedback */
-    .feedback {
-      font-size: 22px;
-      font-weight: bold;
-      padding: 15px;
-      border-radius: 10px;
-      margin-top: 15px;
-    }
-    .feedback.correct {
-      background: rgba(0, 255, 153, 0.15);
-      color: #00ff99;
-      border: 1px solid #00ff99;
-    }
-    .feedback.wrong {
-      background: rgba(255, 68, 68, 0.15);
-      color: #ff4444;
-      border: 1px solid #ff4444;
-    }
-    .feedback.timeout {
-      background: rgba(255, 187, 51, 0.15);
-      color: #ffbb33;
-      border: 1px solid #ffbb33;
-    }
-    .waiting-list { text-align: left; margin-top: 15px; background: #333; padding: 15px; border-radius: 10px; max-height: 250px; overflow-y: auto; }
-    .waiting-list h3 { margin: 0 0 10px 0; color: #00ff99; }
+    .feedback { font-size: 22px; font-weight: bold; padding: 15px; border-radius: 10px; margin-top: 15px; }
+    .feedback.correct { background: rgba(0,255,153,0.15); color: #00ff99; border: 1px solid #00ff99; }
+    .feedback.wrong { background: rgba(255,68,68,0.15); color: #ff4444; border: 1px solid #ff4444; }
+    .feedback.timeout { background: rgba(255,187,51,0.15); color: #ffbb33; border: 1px solid #ffbb33; }
+
+    /* Espera */
+    .waiting-title { color: #ffbb33; font-size: 18px; margin: 15px 0 5px; }
+    .pin-display { background: #1a1a2e; border: 1px solid #00ff99; border-radius: 8px; padding: 10px 15px; margin: 10px 0; display: inline-block; }
+    .pin-display span { color: #00ff99; font-size: 24px; font-weight: bold; letter-spacing: 6px; font-family: 'Courier New', monospace; }
+
+    /* Listas */
+    .player-list { text-align: left; margin-top: 15px; background: #333; padding: 15px; border-radius: 10px; max-height: 250px; overflow-y: auto; }
+    .player-list h3 { margin: 0 0 10px 0; color: #00ff99; }
     .player-item { padding: 8px 12px; margin: 4px 0; background: #444; border-radius: 6px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
     .player-item .dot { width: 8px; height: 8px; background: #00ff99; border-radius: 50%; flex-shrink: 0; }
     .player-count { color: #aaa; font-size: 14px; margin-top: 10px; }
-    .waiting-title { color: #ffbb33; font-size: 18px; margin-bottom: 5px; }
-    /* Top 3 ranking final */
+
+    /* Ranking final */
     .rank-gold { background: linear-gradient(135deg, #b8860b, #daa520) !important; color: #111 !important; font-weight: bold; }
     .rank-silver { background: linear-gradient(135deg, #808080, #c0c0c0) !important; color: #111 !important; font-weight: bold; }
     .rank-bronze { background: linear-gradient(135deg, #8b4513, #cd7f32) !important; color: #fff !important; font-weight: bold; }
-    .pin-mini { background: #1a1a2e; border: 1px solid #00ff99; border-radius: 8px; padding: 10px 15px; margin: 10px 0; display: inline-block; }
-    .pin-mini-label { color: #aaa; font-size: 12px; }
-    .pin-mini-code { color: #00ff99; font-size: 24px; font-weight: bold; letter-spacing: 6px; font-family: 'Courier New', monospace; margin-left: 8px; }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
 <div class="box">
 
+  <!-- TELA DE LOGIN -->
   <div id="joinScreen">
     <h1>🎯 Entrar no Quiz</h1>
-    <input id="nameInput" placeholder="Seu nome">
-    <button onclick="joinGame()">Entrar</button>
+    <input id="pinInput" class="pin-input" placeholder="PIN" maxlength="6" inputmode="numeric">
+    <input id="nameInput" class="name-input" placeholder="Seu nome">
+    <p id="joinError" class="error-msg"></p>
+    <button class="join-btn" onclick="joinGame()">Entrar</button>
   </div>
 
+  <!-- TELA DE ESPERA -->
   <div id="waitingScreen" class="hidden">
     <h2 id="welcomeText"></h2>
-    <div class="pin-mini">
-      <span class="pin-mini-label">PIN DA SALA:</span>
-      <span class="pin-mini-code" id="pinDisplay">------</span>
+    <div class="pin-display">
+      PIN: <span id="pinConfirm">------</span>
     </div>
     <p class="waiting-title">⏳ Esperando o host iniciar o quiz...</p>
-    <div class="waiting-list">
-      <h3>👥 Jogadores conectados:</h3>
+    <div class="player-list">
+      <h3>👥 Jogadores na sala:</h3>
       <div id="waitingPlayersList"></div>
-      <p id="playerCount" class="player-count"></p>
+      <p id="waitingPlayerCount" class="player-count">0 jogador(es)</p>
     </div>
   </div>
 
+  <!-- TELA DO QUIZ -->
   <div id="quizScreen" class="hidden">
-    <h2 id="questionText">Esperando pergunta...</h2>
-    <h3 id="timerText"></h3>
+    <h2 id="questionText"></h2>
+    <h3 id="timerText" style="color:#ffbb33;"></h3>
 
     <button class="a answer-btn" onclick="sendAnswer('a')" id="btnA"></button>
     <button class="b answer-btn" onclick="sendAnswer('b')" id="btnB"></button>
@@ -107,9 +98,10 @@
     <div id="feedbackBox" class="hidden"></div>
   </div>
 
+  <!-- TELA FINAL -->
   <div id="endScreen" class="hidden">
-    <h2 style="color: #ffbb33;">🏁 Quiz Finalizado!</h2>
-    <div class="waiting-list">
+    <h2 style="color: #ffbb33; font-size: 26px;">🏁 Quiz Finalizado!</h2>
+    <div class="player-list">
       <h3>🏆 Ranking Final</h3>
       <div id="finalRanking"></div>
     </div>
@@ -120,100 +112,103 @@
 <script>
   const socket = io();
   let timeLeft = 10;
-  let timerInterval;
+  let timerInterval = null;
   let answered = false;
   let myName = "";
 
+  // ===== JOIN =====
   function joinGame() {
+    const pin = document.getElementById("pinInput").value.trim();
     const name = document.getElementById("nameInput").value.trim();
+    const err = document.getElementById("joinError");
+    err.innerText = "";
 
-    if (!name) {
-      alert("Digite seu nome!");
-      return;
-    }
+    if (!pin || pin.length !== 6) { err.innerText = "Digite o PIN de 6 dígitos!"; return; }
+    if (!name) { err.innerText = "Digite seu nome!"; return; }
 
     myName = name;
-    socket.emit("joinGame", { name });
+    socket.emit("joinGame", { name, pin });
   }
 
+  // Enter para enviar
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !document.getElementById("joinScreen").classList.contains("hidden")) {
+      joinGame();
+    }
+  });
+
+  // Erro
+  socket.on("joinError", (msg) => {
+    document.getElementById("joinError").innerText = msg;
+  });
+
+  // Entrou com sucesso
   socket.on("joinedGame", ({ pin }) => {
     document.getElementById("joinScreen").classList.add("hidden");
     document.getElementById("waitingScreen").classList.remove("hidden");
     document.getElementById("welcomeText").innerText = "Bem-vindo, " + myName + "!";
-    document.getElementById("pinDisplay").innerText = pin;
+    document.getElementById("pinConfirm").innerText = pin;
   });
 
+  // ===== LISTA DE JOGADORES =====
   socket.on("updatePlayers", (players) => {
-    // Atualiza a lista na tela de espera
-    const waitingList = document.getElementById("waitingPlayersList");
-    const playerCount = document.getElementById("playerCount");
+    const listEl = document.getElementById("waitingPlayersList");
+    const countEl = document.getElementById("waitingPlayerCount");
 
-    if (waitingList) {
-      waitingList.innerHTML = players.map(p =>
-        `<div class="player-item">
-          <span class="dot"></span>
-          <span>${p.name}${p.name === myName ? ' (você)' : ''}</span>
-        </div>`
-      ).join("");
+    if (listEl) {
+      if (!players || players.length === 0) {
+        listEl.innerHTML = '<p style="color:#777;">Nenhum jogador ainda...</p>';
+      } else {
+        listEl.innerHTML = players.map(p =>
+          `<div class="player-item">
+            <span class="dot"></span>
+            <span>${p.name}${p.name === myName ? ' (você)' : ''}</span>
+          </div>`
+        ).join("");
+      }
     }
-
-    if (playerCount) {
-      playerCount.innerText = players.length + " jogador(es) na sala";
+    if (countEl) {
+      countEl.innerText = (players ? players.length : 0) + " jogador(es) na sala";
     }
   });
 
-  function resetButtons() {
-    const btns = ['btnA', 'btnB', 'btnC', 'btnD'];
-    btns.forEach(id => {
-      const btn = document.getElementById(id);
-      btn.classList.remove('disabled', 'correct-answer', 'wrong-answer');
-    });
-  }
+  // ===== QUIZ COMEÇOU =====
+  socket.on("quizStarted", () => {
+    // A transição pra tela do quiz acontece no newQuestion
+  });
 
-  function disableAllButtons() {
-    const btns = ['btnA', 'btnB', 'btnC', 'btnD'];
-    btns.forEach(id => {
-      document.getElementById(id).classList.add('disabled');
-    });
-  }
-
-  function showFeedback(type, text) {
-    const box = document.getElementById("feedbackBox");
-    box.className = "feedback " + type;
-    box.innerText = text;
-    box.classList.remove("hidden");
-  }
-
+  // ===== NOVA PERGUNTA =====
   socket.on("newQuestion", (data) => {
     answered = false;
-    clearInterval(timerInterval);
+    if (timerInterval) clearInterval(timerInterval);
 
-    // Transição: tela de espera → tela do quiz
     document.getElementById("waitingScreen").classList.add("hidden");
+    document.getElementById("endScreen").classList.add("hidden");
     document.getElementById("quizScreen").classList.remove("hidden");
 
-    // Reset estado visual
-    resetButtons();
+    // Reset botões
+    ['btnA','btnB','btnC','btnD'].forEach(id => {
+      const b = document.getElementById(id);
+      b.classList.remove('disabled', 'correct-highlight', 'wrong-highlight');
+    });
     document.getElementById("feedbackBox").classList.add("hidden");
 
-    timeLeft = 10;
     document.getElementById("questionText").innerText = data.question.question;
-
     document.getElementById("btnA").innerText = "A) " + data.question.answers.a;
     document.getElementById("btnB").innerText = "B) " + data.question.answers.b;
     document.getElementById("btnC").innerText = "C) " + data.question.answers.c;
     document.getElementById("btnD").innerText = "D) " + data.question.answers.d;
 
-    document.getElementById("timerText").innerText = "Tempo: " + timeLeft;
+    timeLeft = 10;
+    document.getElementById("timerText").innerText = "⏱ " + timeLeft + "s";
 
     timerInterval = setInterval(() => {
       timeLeft--;
-      document.getElementById("timerText").innerText = "Tempo: " + timeLeft;
+      document.getElementById("timerText").innerText = "⏱ " + timeLeft + "s";
 
       if (timeLeft <= 0) {
         clearInterval(timerInterval);
-        disableAllButtons();
-
+        ['btnA','btnB','btnC','btnD'].forEach(id => document.getElementById(id).classList.add('disabled'));
         if (!answered) {
           answered = true;
           showFeedback("timeout", "⏳ Tempo esgotado!");
@@ -222,52 +217,57 @@
     }, 1000);
   });
 
+  // ===== ENVIAR RESPOSTA =====
   function sendAnswer(choice) {
     if (answered) return;
     answered = true;
-
-    socket.emit("submitAnswer", {
-      answer: choice,
-      timeLeft: timeLeft
-    });
-
-    // Desabilita botões imediatamente após responder
-    disableAllButtons();
+    socket.emit("submitAnswer", { answer: choice, timeLeft });
+    ['btnA','btnB','btnC','btnD'].forEach(id => document.getElementById(id).classList.add('disabled'));
   }
 
-  // Recebe resultado individual: acertou ou errou
+  // ===== RESULTADO DA RESPOSTA =====
   socket.on("answerResult", ({ correct, correctAnswer }) => {
     if (correct) {
       showFeedback("correct", "✅ Você acertou! +" + (200 + timeLeft * 80) + " pts");
     } else {
-      showFeedback("wrong", "❌ Você errou! Resposta correta: " + correctAnswer.toUpperCase());
-
-      // Destaca a resposta correta em verde
-      document.getElementById("btn" + correctAnswer.toUpperCase()).classList.add("correct-answer");
+      showFeedback("wrong", "❌ Você errou! Resposta: " + correctAnswer.toUpperCase());
+      document.getElementById("btn" + correctAnswer.toUpperCase()).classList.add("correct-highlight");
     }
   });
 
-  socket.on("errorMessage", (msg) => {
-    alert(msg);
-  });
+  function showFeedback(type, text) {
+    const box = document.getElementById("feedbackBox");
+    box.className = "feedback " + type;
+    box.innerText = text;
+    box.classList.remove("hidden");
+  }
 
+  // ===== QUIZ TERMINOU =====
   socket.on("quizEnded", (players) => {
-    players.sort((a,b) => b.score - a.score);
-
-    clearInterval(timerInterval);
+    players.sort((a, b) => b.score - a.score);
+    if (timerInterval) clearInterval(timerInterval);
 
     document.getElementById("quizScreen").classList.add("hidden");
     document.getElementById("endScreen").classList.remove("hidden");
 
     document.getElementById("finalRanking").innerHTML =
       players.map((p, i) => {
-        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}º`;
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1) + 'º';
         const you = p.name === myName ? ' ⬅ você' : '';
-        const rankClass = i === 0 ? ' rank-gold' : i === 1 ? ' rank-silver' : i === 2 ? ' rank-bronze' : '';
-        return `<div class="player-item${rankClass}">
-          <span>${medal} ${p.name}${you} — ${p.score} pts</span>
-        </div>`;
+        const cls = i === 0 ? ' rank-gold' : i === 1 ? ' rank-silver' : i === 2 ? ' rank-bronze' : '';
+        return `<div class="player-item${cls}"><span>${medal} ${p.name}${you} — ${p.score} pts</span></div>`;
       }).join("");
+  });
+
+  // ===== RESET (novo quiz) =====
+  socket.on("resetGame", () => {
+    if (timerInterval) clearInterval(timerInterval);
+    document.getElementById("quizScreen").classList.add("hidden");
+    document.getElementById("waitingScreen").classList.add("hidden");
+    document.getElementById("endScreen").classList.add("hidden");
+    document.getElementById("joinScreen").classList.remove("hidden");
+    document.getElementById("pinInput").value = "";
+    document.getElementById("joinError").innerText = "O host iniciou um novo jogo. Digite o novo PIN!";
   });
 </script>
 

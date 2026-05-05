@@ -5,10 +5,11 @@
   <title>Host - Quiz Multiplayer</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
+    * { box-sizing: border-box; }
     body { font-family: Arial; background: #111; color: white; text-align: center; margin: 0; padding: 20px; }
-    .box { margin: auto; max-width: 700px; background: #222; padding: 30px; border-radius: 12px; }
+    .box { margin: auto; max-width: 750px; background: #222; padding: 30px; border-radius: 12px; }
 
-    /* PIN da sala */
+    /* PIN */
     .pin-box {
       background: linear-gradient(135deg, #1a1a2e, #16213e);
       border: 2px solid #00ff99;
@@ -18,11 +19,8 @@
     }
     .pin-label { color: #aaa; font-size: 14px; margin: 0; }
     .pin-code {
-      font-size: 48px;
-      font-weight: bold;
-      letter-spacing: 12px;
-      color: #00ff99;
-      margin: 10px 0 0 0;
+      font-size: 52px; font-weight: bold; letter-spacing: 14px;
+      color: #00ff99; margin: 10px 0 0 0;
       font-family: 'Courier New', monospace;
     }
 
@@ -30,182 +28,187 @@
     button { padding: 14px 28px; margin: 10px; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; transition: transform 0.1s; }
     button:hover { transform: scale(1.03); }
     button:active { transform: scale(0.97); }
-    .green { background: #00ff99; font-weight: bold; font-size: 18px; padding: 16px 40px; }
+    .green { background: #00ff99; color: #111; font-weight: bold; font-size: 18px; padding: 16px 40px; }
     .blue { background: #448aff; color: white; font-weight: bold; font-size: 20px; padding: 18px 50px; }
     .restart { background: #ffbb33; color: #111; font-weight: bold; }
 
     /* Pergunta */
     .question-area {
-      background: #1a1a2e;
-      border-radius: 12px;
-      padding: 25px 30px;
-      margin: 20px 0;
-      min-height: 80px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background: #1a1a2e; border-radius: 12px;
+      padding: 30px; margin: 20px 0;
     }
-    .question-area h2 {
-      margin: 0;
-      font-size: 26px;
-      line-height: 1.4;
-      color: #fff;
-    }
+    .question-number { color: #ffbb33; font-size: 16px; margin: 0 0 10px 0; }
+    .question-text { font-size: 26px; line-height: 1.4; color: #fff; margin: 0; }
 
-    /* Botão centralizado durante quiz */
-    .center-action {
-      display: flex;
-      justify-content: center;
-      margin: 25px 0;
-    }
+    /* Botão centralizado */
+    .center-action { display: flex; justify-content: center; margin: 25px 0; }
 
     /* Listas */
     .list { text-align: left; margin-top: 20px; background: #333; padding: 15px; border-radius: 10px; }
+    .list h3 { margin: 0 0 10px 0; }
     .player-item { padding: 8px 12px; margin: 4px 0; background: #444; border-radius: 6px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
     .player-item .dot { width: 8px; height: 8px; background: #00ff99; border-radius: 50%; flex-shrink: 0; }
     .player-count { color: #aaa; font-size: 14px; margin-top: 10px; }
-    .leaderboard-item { padding: 8px 12px; margin: 4px 0; background: #444; border-radius: 6px; font-size: 15px; }
-    /* Top 3 colorido */
-    .leaderboard-item.rank-1 { background: linear-gradient(135deg, #b8860b, #daa520); color: #111; font-weight: bold; }
-    .leaderboard-item.rank-2 { background: linear-gradient(135deg, #808080, #c0c0c0); color: #111; font-weight: bold; }
-    .leaderboard-item.rank-3 { background: linear-gradient(135deg, #8b4513, #cd7f32); color: #fff; font-weight: bold; }
+    .empty-msg { color: #777; font-style: italic; }
 
-    /* Estados */
+    /* Leaderboard */
+    .lb-item { padding: 10px 14px; margin: 4px 0; background: #444; border-radius: 6px; font-size: 15px; }
+    .lb-item.rank-1 { background: linear-gradient(135deg, #b8860b, #daa520); color: #111; font-weight: bold; }
+    .lb-item.rank-2 { background: linear-gradient(135deg, #808080, #c0c0c0); color: #111; font-weight: bold; }
+    .lb-item.rank-3 { background: linear-gradient(135deg, #8b4513, #cd7f32); color: #fff; font-weight: bold; }
+
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
-  <div class="box">
-    <h1>🎮 Host (Professor)</h1>
+<div class="box">
+  <h1>🎮 Host (Professor)</h1>
 
-    <!-- PIN DA SALA (antes do quiz e após o fim) -->
-    <div id="pinBox" class="pin-box">
-      <p class="pin-label">PIN DA SALA</p>
-      <p class="pin-code" id="pinCode">------</p>
-    </div>
+  <!-- PIN -->
+  <div id="pinBox" class="pin-box">
+    <p class="pin-label">PIN DA SALA</p>
+    <p class="pin-code" id="pinCode">------</p>
+  </div>
 
-    <!-- ÁREA DE ESPERA (antes do quiz) -->
-    <div id="waitingArea">
-      <button class="green" id="btnStart" onclick="startQuiz()">Começar Quiz</button>
+  <!-- TELA DE ESPERA -->
+  <div id="waitingArea">
+    <button class="green" onclick="startQuiz()">▶ Começar Quiz</button>
 
-      <div class="list">
-        <h3>👥 Jogadores conectados:</h3>
-        <div id="playersList"></div>
-        <p id="playerCount" class="player-count"></p>
-      </div>
-    </div>
-
-    <!-- ÁREA DO QUIZ (durante o quiz) -->
-    <div id="quizArea" class="hidden">
-      <div class="question-area">
-        <h2 id="questionTitle">Aguardando pergunta...</h2>
-      </div>
-
-      <div class="center-action">
-        <button class="blue" id="btnNext" onclick="nextQuestion()">Próxima Pergunta ➜</button>
-      </div>
-
-      <div class="list">
-        <h3>🏆 Leaderboard</h3>
-        <div id="leaderboard"></div>
-      </div>
-    </div>
-
-    <!-- ÁREA DE FIM (quiz terminado) -->
-    <div id="endedArea" class="hidden">
-      <h2 style="color: #ffbb33; font-size: 28px;">🏁 Quiz Finalizado!</h2>
-
-      <div class="list">
-        <h3>🏆 Ranking Final</h3>
-        <div id="finalLeaderboard"></div>
-      </div>
-
-      <button class="restart" onclick="restartQuiz()">🔄 Novo Quiz</button>
+    <div class="list">
+      <h3>👥 Jogadores conectados:</h3>
+      <div id="playersList"><p class="empty-msg">Nenhum jogador ainda...</p></div>
+      <p id="playerCount" class="player-count">0 jogador(es) na sala</p>
     </div>
   </div>
+
+  <!-- TELA DO QUIZ -->
+  <div id="quizArea" class="hidden">
+    <div class="question-area">
+      <p class="question-number" id="questionNumber"></p>
+      <p class="question-text" id="questionText"></p>
+    </div>
+
+    <div class="center-action">
+      <button class="blue" onclick="nextQuestion()">Próxima Pergunta ➜</button>
+    </div>
+
+    <div class="list">
+      <h3>🏆 Leaderboard</h3>
+      <div id="leaderboard"><p class="empty-msg">Aguardando respostas...</p></div>
+    </div>
+  </div>
+
+  <!-- TELA FINAL -->
+  <div id="endedArea" class="hidden">
+    <h2 style="color: #ffbb33; font-size: 28px;">🏁 Quiz Finalizado!</h2>
+
+    <div class="list">
+      <h3>🏆 Ranking Final</h3>
+      <div id="finalLeaderboard"></div>
+    </div>
+
+    <button class="restart" onclick="newQuiz()">🔄 Novo Quiz (Novo PIN)</button>
+  </div>
+</div>
 
 <script>
   const socket = io();
 
-  // --- Recebe PIN da sala ---
+  // --- Registra como host ---
+  socket.emit("hostJoin");
+
+  // --- PIN ---
   socket.on("roomPin", (pin) => {
     document.getElementById("pinCode").innerText = pin;
   });
 
-  // --- Atualiza lista de jogadores ---
+  // --- Lista de jogadores ---
   socket.on("updatePlayers", (players) => {
-    document.getElementById("playersList").innerHTML =
-      players.map(p =>
+    const listEl = document.getElementById("playersList");
+    const countEl = document.getElementById("playerCount");
+
+    if (!players || players.length === 0) {
+      listEl.innerHTML = '<p class="empty-msg">Nenhum jogador ainda...</p>';
+    } else {
+      listEl.innerHTML = players.map(p =>
         `<div class="player-item">
           <span class="dot"></span>
           <span>${p.name}</span>
         </div>`
       ).join("");
-
-    document.getElementById("playerCount").innerText =
-      players.length + " jogador(es) na sala";
+    }
+    countEl.innerText = (players ? players.length : 0) + " jogador(es) na sala";
   });
 
   // --- Quiz iniciado ---
   socket.on("quizStarted", () => {
-    // Esconde PIN e botão Começar
     document.getElementById("pinBox").classList.add("hidden");
     document.getElementById("waitingArea").classList.add("hidden");
-
-    // Mostra área do quiz
     document.getElementById("quizArea").classList.remove("hidden");
     document.getElementById("endedArea").classList.add("hidden");
   });
 
   // --- Nova pergunta ---
   socket.on("newQuestion", (data) => {
-    document.getElementById("questionTitle").innerText =
-      `Pergunta ${data.index + 1}/${data.total}\n${data.question.question}`;
+    document.getElementById("questionNumber").innerText =
+      "Pergunta " + (data.index + 1) + " de " + data.total;
+    document.getElementById("questionText").innerText = data.question.question;
+
+    // Reseta leaderboard visual
+    document.getElementById("leaderboard").innerHTML =
+      '<p class="empty-msg">Aguardando respostas...</p>';
   });
 
-  // --- Atualização do leaderboard ---
+  // --- Leaderboard ao vivo ---
   socket.on("leaderboardUpdate", (players) => {
-    players.sort((a,b) => b.score - a.score);
+    players.sort((a, b) => b.score - a.score);
 
     document.getElementById("leaderboard").innerHTML =
       players.map((p, i) => {
-        const rankClass = i === 0 ? ' rank-1' : i === 1 ? ' rank-2' : i === 2 ? ' rank-3' : '';
-        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}º`;
-        return `<div class="leaderboard-item${rankClass}">${medal} ${p.name} — ${p.score} pts</div>`;
+        const cls = i === 0 ? ' rank-1' : i === 1 ? ' rank-2' : i === 2 ? ' rank-3' : '';
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + 'º';
+        return `<div class="lb-item${cls}">${medal} ${p.name} — ${p.score} pts</div>`;
       }).join("");
   });
 
   // --- Quiz terminou ---
   socket.on("quizEnded", (players) => {
-    players.sort((a,b) => b.score - a.score);
+    players.sort((a, b) => b.score - a.score);
 
-    // Esconde área do quiz
     document.getElementById("quizArea").classList.add("hidden");
-
-    // Mostra PIN novamente e área de fim
     document.getElementById("pinBox").classList.remove("hidden");
     document.getElementById("endedArea").classList.remove("hidden");
 
     document.getElementById("finalLeaderboard").innerHTML =
       players.map((p, i) => {
-        const rankClass = i === 0 ? ' rank-1' : i === 1 ? ' rank-2' : i === 2 ? ' rank-3' : '';
-        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}º`;
-        return `<div class="leaderboard-item${rankClass}">${medal} ${p.name} — ${p.score} pts</div>`;
+        const cls = i === 0 ? ' rank-1' : i === 1 ? ' rank-2' : i === 2 ? ' rank-3' : '';
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + 'º';
+        return `<div class="lb-item${cls}">${medal} ${p.name} — ${p.score} pts</div>`;
       }).join("");
   });
 
-  // --- Funções ---
-  function startQuiz() {
-    socket.emit("startQuiz");
-  }
+  // --- Reset ---
+  socket.on("resetGame", () => {
+    document.getElementById("pinBox").classList.remove("hidden");
+    document.getElementById("waitingArea").classList.remove("hidden");
+    document.getElementById("quizArea").classList.add("hidden");
+    document.getElementById("endedArea").classList.add("hidden");
+    document.getElementById("playersList").innerHTML =
+      '<p class="empty-msg">Nenhum jogador ainda...</p>';
+    document.getElementById("playerCount").innerText = "0 jogador(es) na sala";
+  });
 
-  function nextQuestion() {
-    socket.emit("nextQuestion");
-  }
+  // --- Erro ---
+  socket.on("errorMessage", (msg) => { alert(msg); });
 
-  function restartQuiz() {
-    location.reload();
+  // --- Ações ---
+  function startQuiz() { socket.emit("startQuiz"); }
+  function nextQuestion() { socket.emit("nextQuestion"); }
+  function newQuiz() {
+    if (confirm("Gerar novo PIN? Todos os jogadores serão desconectados.")) {
+      socket.emit("newQuiz");
+    }
   }
 </script>
 
