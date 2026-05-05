@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Host - Kahoot Multiplayer</title>
+  <title>Host - Quiz Multiplayer</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
     body { font-family: Arial; background: #111; color: white; text-align: center; }
@@ -17,8 +17,6 @@
 
   <div class="box">
     <h1>Host (Professor)</h1>
-    <h2>PIN da Sala:</h2>
-    <h1 id="pinText">---</h1>
 
     <button class="green" onclick="startQuiz()">Começar Quiz</button>
     <button class="blue" onclick="nextQuestion()">Próxima Pergunta</button>
@@ -38,14 +36,6 @@
 
 <script>
   const socket = io();
-  let pinGlobal = null;
-
-  socket.emit("createRoom");
-
-  socket.on("roomCreated", (pin) => {
-    pinGlobal = pin;
-    document.getElementById("pinText").innerText = pin;
-  });
 
   socket.on("updatePlayers", (players) => {
     document.getElementById("playersList").innerHTML =
@@ -64,18 +54,16 @@
       players.map((p, i) => `<p>${i+1}. ${p.name} - ${p.score} pts</p>`).join("");
   });
 
-  socket.on("quizEnded", (players) => {
+  socket.on("quizEnded", () => {
     alert("Quiz terminou!");
   });
 
   function startQuiz() {
-    if (!pinGlobal) return;
-    socket.emit("startQuiz", pinGlobal);
+    socket.emit("startQuiz");
   }
 
   function nextQuestion() {
-    if (!pinGlobal) return;
-    socket.emit("nextQuestion", pinGlobal);
+    socket.emit("nextQuestion");
   }
 </script>
 

@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Player - Kahoot Multiplayer</title>
+  <title>Player - Quiz Multiplayer</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
     body { font-family: Arial; background: #111; color: white; text-align: center; }
@@ -22,9 +22,8 @@
 
   <div id="joinScreen">
     <h1>Entrar no Quiz</h1>
-    <input id="pinInput" placeholder="Digite o PIN">
     <input id="nameInput" placeholder="Seu nome">
-    <button onclick="joinRoom()">Entrar</button>
+    <button onclick="joinGame()">Entrar</button>
   </div>
 
   <div id="quizScreen" class="hidden">
@@ -43,25 +42,22 @@
 
 <script>
   const socket = io();
-  let pinGlobal = null;
   let timeLeft = 10;
   let timerInterval;
   let answered = false;
 
-  function joinRoom() {
-    const pin = document.getElementById("pinInput").value.trim();
+  function joinGame() {
     const name = document.getElementById("nameInput").value.trim();
 
-    if (!pin || !name) {
-      alert("Digite PIN e Nome!");
+    if (!name) {
+      alert("Digite seu nome!");
       return;
     }
 
-    pinGlobal = pin;
-    socket.emit("joinRoom", { pin, name });
+    socket.emit("joinGame", { name });
   }
 
-  socket.on("joinedRoom", () => {
+  socket.on("joinedGame", () => {
     document.getElementById("joinScreen").classList.add("hidden");
     document.getElementById("quizScreen").classList.remove("hidden");
   });
@@ -98,7 +94,6 @@
     answered = true;
 
     socket.emit("submitAnswer", {
-      pin: pinGlobal,
       answer: choice,
       timeLeft: timeLeft
     });

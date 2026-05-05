@@ -4,7 +4,13 @@ const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(express.static("public"));
 
@@ -91,132 +97,99 @@ const questions = [
   }
 ];
 
-// salas
-let rooms = {};
+const GLOBAL_ROOM = "GLOBAL";
 
-function generatePin() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+let players = {};
+let currentQuestion = -1;
+let started = false;
 
 io.on("connection", (socket) => {
 
-  // HOST cria sala
-  socket.on("createRoom", () => {
-    const pin = generatePin();
-
-    rooms[pin] = {
-      hostId: socket.id,
-      players: {},
-      currentQuestion: -1,
-      started: false
-    };
-
-    socket.join(pin);
-    socket.emit("roomCreated", pin);
-  });
-
-  // PLAYER entra na sala
-  socket.on("joinRoom", ({ pin, name }) => {
-    if (!rooms[pin]) {
-      socket.emit("errorMessage", "Sala não encontrada!");
-      return;
-    }
-
-    rooms[pin].players[socket.id] = {
+  // player entra com nome
+  socket.on("joinGame", ({ name }) => {
+    players[socket.id] = {
       name,
       score: 0,
       answered: false
     };
 
-    socket.join(pin);
+    socket.join(GLOBAL_ROOM);
 
-    io.to(pin).emit("updatePlayers", Object.values(rooms[pin].players));
-    socket.emit("joinedRoom", pin);
+    io.to(GLOBAL_ROOM).emit("updatePlayers", Object.values(players));
+
+    socket.emit("joinedGame");
+
+    // se o jogo já começou, manda pergunta atual
+    if (started && currentQuestion >= 0) {
+      socket.emit("newQuestion", {
+        index: currentQuestion,
+        total: questions.length,
+        question: questions[currentQuestion]
+      });
+    }
   });
 
-  // HOST começa quiz
-  socket.on("startQuiz", (pin) => {
-    if (!rooms[pin]) return;
-    rooms[pin].started = true;
-    rooms[pin].currentQuestion = 0;
+  // host começa quiz
+  socket.on("startQuiz", () => {
+    started = true;
+    currentQuestion = 0;
 
-    // reset answered
-    for (let id in rooms[pin].players) {
-      rooms[pin].players[id].answered = false;
+    for (let id in players) {
+      players[id].answered = false;
     }
 
-    io.to(pin).emit("newQuestion", {
-      index: 0,
+    io.to(GLOBAL_ROOM).emit("newQuestion", {
+      index: currentQuestion,
       total: questions.length,
-      question: questions[0]
+      question: questions[currentQuestion]
     });
   });
 
-  // HOST próxima pergunta
-  socket.on("nextQuestion", (pin) => {
-    if (!rooms[pin]) return;
+  // host próxima pergunta
+  socket.on("nextQuestion", () => {
+    currentQuestion++;
 
-    rooms[pin].currentQuestion++;
-
-    if (rooms[pin].currentQuestion >= questions.length) {
-      io.to(pin).emit("quizEnded", Object.values(rooms[pin].players));
+    if (currentQuestion >= questions.length) {
+      io.to(GLOBAL_ROOM).emit("quizEnded", Object.values(players));
       return;
     }
 
-    for (let id in rooms[pin].players) {
-      rooms[pin].players[id].answered = false;
+    for (let id in players) {
+      players[id].answered = false;
     }
 
-    const qIndex = rooms[pin].currentQuestion;
-
-    io.to(pin).emit("newQuestion", {
-      index: qIndex,
+    io.to(GLOBAL_ROOM).emit("newQuestion", {
+      index: currentQuestion,
       total: questions.length,
-      question: questions[qIndex]
+      question: questions[currentQuestion]
     });
   });
 
-  // PLAYER responde
-  socket.on("submitAnswer", ({ pin, answer, timeLeft }) => {
-    if (!rooms[pin]) return;
-
-    const player = rooms[pin].players[socket.id];
+  // player responde
+  socket.on("submitAnswer", ({ answer, timeLeft }) => {
+    const player = players[socket.id];
     if (!player) return;
 
     if (player.answered) return;
     player.answered = true;
 
-    const qIndex = rooms[pin].currentQuestion;
-    const correct = questions[qIndex].correct;
+    const correct = questions[currentQuestion].correct;
 
     if (answer === correct) {
-      // pontuação por tempo (máx 1000)
       let points = 200 + (timeLeft * 80);
       player.score += points;
     }
 
-    io.to(pin).emit("leaderboardUpdate", Object.values(rooms[pin].players));
+    io.to(GLOBAL_ROOM).emit("leaderboardUpdate", Object.values(players));
   });
 
-  // desconectar
   socket.on("disconnect", () => {
-    for (let pin in rooms) {
-      if (rooms[pin].players[socket.id]) {
-        delete rooms[pin].players[socket.id];
-        io.to(pin).emit("updatePlayers", Object.values(rooms[pin].players));
-      }
-
-      // se host saiu, fecha sala
-      if (rooms[pin].hostId === socket.id) {
-        io.to(pin).emit("errorMessage", "O host saiu. Sala encerrada.");
-        delete rooms[pin];
-      }
-    }
+    delete players[socket.id];
+    io.to(GLOBAL_ROOM).emit("updatePlayers", Object.values(players));
   });
 });
 
 const PORT = process.env.PORT || 3000;
-
 server.listen(PORT, () => {
   console.log("Servidor rodando na porta " + PORT);
 });
